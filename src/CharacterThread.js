@@ -177,7 +177,13 @@ async function make_runner(upper, CODE_file, proc_args, is_typescript) {
 }
 
 async function make_game(proc_args) {
-  const game_sources = ["./src/html_prelude.js"]
+  await game_files.ensure_html_globals(proc_args.base_url, proc_args.version);
+  const game_sources = [
+    game_files.resolve_html_globals_source(
+      proc_args.base_url,
+      proc_args.version,
+    ),
+  ]
     .concat(
       game_files
         .get_game_files()
