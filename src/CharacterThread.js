@@ -210,9 +210,17 @@ async function make_runner(upper, CODE_file, proc_args, is_typescript) {
 }
 
 async function make_game(proc_args) {
-  //the game files read html_vars.js as they evaluate, html_init.js calls back
-  //into them - hence the order
-  const game_sources = ["./src/html_vars.js"]
+  //the official page's own globals first (extracted from its HTML, when that worked), then caracAL's html_vars over
+  //them; the game files read both as they evaluate, html_init.js calls back into them - hence the order
+  await game_files.ensure_html_globals(proc_args.base_url, proc_args.version);
+  const game_sources = [
+    game_files.resolve_html_globals_source(
+      proc_args.base_url,
+      proc_args.version,
+    ),
+    "./src/html_vars.js",
+  ]
+    .filter((f) => f)
     .concat(
       game_files
         .get_game_files()
