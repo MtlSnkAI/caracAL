@@ -24,6 +24,11 @@ function humanize_int(num, digits) {
 function register_stat_beat(g_con) {
   g_con.caracAL.stat_beat = setInterval(() => {
     const character = g_con.character;
+    if (!character) {
+      //mid-hop, no character yet: still alive for the watchdog
+      process.send({ type: "stat_beat", keepalive: true });
+      return;
+    }
     const result = { type: "stat_beat" };
     [
       "rip",
@@ -58,7 +63,7 @@ function create_monitor_ui(bwi, char_name, child_block, enable_map) {
   let gold_histo = [];
   let last_beat = null;
   child_block.instance.on("message", (m) => {
-    if (m.type == "stat_beat") {
+    if (m.type == "stat_beat" && !m.keepalive) {
       gold_histo.push(m.gold);
       gold_histo = gold_histo.slice(-100);
       if (last_beat && last_beat.level != m.level) {
