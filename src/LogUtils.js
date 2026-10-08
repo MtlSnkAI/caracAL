@@ -31,7 +31,8 @@ function get_git_revision() {
 
 let config = null;
 try {
-  config = require("../config");
+  // the config file main.js was given (CARACAL_CONFIG), else ./config.js
+  config = require(process.env.CARACAL_CONFIG || "../config");
 } catch (err) {}
 let level = config ? config.log_level || "info" : "silent";
 

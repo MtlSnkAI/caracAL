@@ -52,6 +52,9 @@ async function get_webpack_started(cfg) {
   const args = process.argv.slice(2);
   const configPath = resolve(args[0] ?? "./config.js");
   console.log(`Using config file located at ${configPath}`);
+  // LogUtils reads its log_level from it (the coordinator; character threads inherit the variable, but where the
+  // permission model applies they cannot read the config, which holds the session, and log through the plain console)
+  process.env.CARACAL_CONFIG = configPath;
   await ConfigUtil.interactive(configPath);
   const cfg = require(configPath);
   await get_webpack_started(cfg);
