@@ -270,7 +270,7 @@ async function make_game(proc_args) {
     const session = `${game_context.user_id}-${game_context.user_auth}`;
 
     const url = `${game_context.location.origin}/api/${method}`;
-    console.log("api_call", method, url, session);
+    console.debug("api_call", method);
     const response = await fetch(url, {
       method: "POST",
       headers: {
