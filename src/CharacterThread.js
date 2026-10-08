@@ -412,10 +412,10 @@ async function make_game(proc_args) {
 process.on("message", async (msg) => {
   if (msg.type == "process_args") {
     const { cname, clid } = msg.arguments;
-    console.debug(
-      "starting character thread with arguments: %O",
-      msg.arguments,
-    );
+    console.debug("starting character thread with arguments: %O", {
+      ...msg.arguments,
+      sess: "<redacted>",
+    });
     const new_log = LogUtils.log.child({ cname, clid });
     LogUtils.log = new_log;
     await make_game(msg.arguments);
