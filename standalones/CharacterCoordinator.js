@@ -323,9 +323,21 @@ function migrate_old_storage(path, localStorage) {
     });
   }
 
+  // Logins at least 2 s apart: two characters of an account logging in at the same moment on a server, the game refuses
+  // one ("characters_unconfirmed": its encouragement check of the account's characters, reset by the other's login),
+  // and it waits out an auth backoff (30 s and more)
+  const LOGIN_GAP_MS = 2000;
+  let next_login_at = 0;
+  async function login_gap() {
+    const at = Math.max(Date.now(), next_login_at);
+    next_login_at = at + LOGIN_GAP_MS;
+    if (at > Date.now()) await sleep(at - Date.now());
+  }
+
   async function do_start_char(char_name) {
     const char_block = character_manage[char_name];
     await wait_auth_backoff(char_name, char_block);
+    await login_gap();
     // Never fork on top of a live child — that orphans the old process and
     // leaves it holding the character auth slot (authentication_failed thrash).
     if (char_block.instance) {
