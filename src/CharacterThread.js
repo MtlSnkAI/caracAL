@@ -23,6 +23,9 @@ const { console } = LogUtils;
 process.on("unhandledRejection", function (exception) {
   console.warn("promise rejected: \n", exception);
 });
+// the coordinator gone (killed, crashed): nobody restarts, steers or logs this character any more; it stops rather
+// than play on unseen
+process.on("disconnect", () => process.exit());
 
 const html_spoof = `<!DOCTYPE html>
 <html>
