@@ -638,26 +638,46 @@ function migrate_old_storage(path, localStorage) {
   }
   //TODO beta new logic for #5
   //i need to implement decent lifecycle-handling
-  ["SIGINT", "SIGTERM", "SIGQUIT"].forEach((signal) =>
-    process.on(signal, async () => {
-      console.log(`Received ${signal} on master. Rounding up clients`);
-      //softkill all chars, giving them chance to shutdown
+  // Stopping: once (a terminal's Ctrl-C reaches this process and main.js, which passes it on), every character
+  // softkilled, localStorage flushed; never longer than 15 s. With main.js gone its log pipe is gone: writing to it
+  // must not stop the shutdown.
+  let shutting_down = false;
+  const say = (...a) => {
+    try {
+      console.log(...a);
+    } catch (e) {}
+  };
+  for (const s of [process.stdout, process.stderr]) s.on("error", () => {});
+  async function shutdown(why) {
+    if (shutting_down) return;
+    shutting_down = true;
+    setTimeout(() => process.exit(1), 15_000).unref();
+    say(`${why}. Rounding up clients`);
+    //softkill all chars, giving them chance to shutdown
+    try {
       await Promise.all(
         Object.values(character_manage).map((char_block) => {
           char_block.enabled = false;
           return softkill_block(char_block);
         }),
       );
-      console.log("flushing localStorage to disk");
-      try {
-        localStorage.shutdown();
-      } catch (err) {
-        console.error("localStorage shutdown error:", err);
-      }
-      console.log("now truly exiting");
-      process.exit();
-    }),
+    } catch (e) {
+      say("softkill failed:", e);
+    }
+    say("flushing localStorage to disk");
+    try {
+      localStorage.shutdown();
+    } catch (err) {
+      say("localStorage shutdown error:", err);
+    }
+    say("now truly exiting");
+    process.exit();
+  }
+  ["SIGINT", "SIGTERM", "SIGQUIT"].forEach((signal) =>
+    process.on(signal, () => shutdown(`Received ${signal} on master`)),
   );
+  // main.js gone (killed, crashed): nothing carries the log any more; stop the characters rather than run unseen
+  process.on("disconnect", () => shutdown("main.js is gone"));
 
   for (const c_name of Object.keys(character_manage)) {
     const char = character_manage[c_name];
