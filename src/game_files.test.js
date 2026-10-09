@@ -48,3 +48,25 @@ describe("official client script lists", () => {
     assert.deepEqual(get_runner_files(), get_runner_files_fallback());
   });
 });
+
+const { describe: d2, it: i2 } = require("node:test");
+d2("locate_game_file", () => {
+  i2("keeps a first-party file's folder, the rest by name", () => {
+    const gf = require("./game_files");
+    const at = (r) => gf.locate_game_file("https://adventure.land", r, 7);
+    require("node:assert/strict").deepEqual(
+      [
+        at("/js/game.js"),
+        at("/js/progression/ui.js"),
+        at("/phrases/en.js"),
+        at("/js/pixi/fake/pixi.min.js"),
+      ],
+      [
+        "./game_files/adventure.land/7/game.js",
+        "./game_files/adventure.land/7/progression/ui.js",
+        "./game_files/adventure.land/7/phrases/en.js",
+        "./game_files/adventure.land/7/pixi.min.js",
+      ],
+    );
+  });
+});

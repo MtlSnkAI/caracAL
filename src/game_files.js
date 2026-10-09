@@ -167,6 +167,7 @@ async function available_versions(base_url) {
 
 async function download_file(url, file_p) {
   const response = await fetch(url);
+  await fs.mkdir(path.dirname(file_p), { recursive: true });
 
   if (!response.ok) {
     throw new Error(`failed to download ${url}: ${response.statusText}`);
@@ -238,7 +239,13 @@ function resolve_html_globals_source(base_url, version) {
 
 function locate_game_file(base_url, resource, version) {
   const base_host_name = getHostname(base_url);
-  const file_name = path.posix.basename(resource);
+  // a first-party file in a folder keeps it (/js/progression/ui.js -> progression/ui.js, /phrases/en.js ->
+  // phrases/en.js): one of another folder may have its name. The rest (and the fakes) by name, as before
+  const nested =
+    !resource.includes("/fake/") && /^\/(js\/[^/]+\/|phrases\/)/.test(resource);
+  const file_name = nested
+    ? resource.replace(/^\/(js\/)?/, "")
+    : path.posix.basename(resource);
   return `./game_files/${base_host_name}/${version}/${file_name}`;
 }
 

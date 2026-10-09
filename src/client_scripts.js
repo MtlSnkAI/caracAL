@@ -69,13 +69,14 @@ function rewriteOrSkip(src) {
     }
   }
   for (const keep of KEEP_PREFIX) {
+    // first-party scripts, in folders too (/js/progression/*.js): the vendor trees were skipped above
     if (src.startsWith(keep) && src.endsWith(".js")) {
-      // Top-level /js/foo.js only — not nested vendor trees (already skipped).
-      const rest = src.slice("/js/".length);
-      if (!rest.includes("/")) {
-        return src;
-      }
+      return src;
     }
+  }
+  // the language's phrases (phrase() reads them: without them the log shows keys such as server.kill.you.a)
+  if (/^\/phrases\/[\w-]+\.js$/.test(src)) {
+    return src;
   }
   return null;
 }
