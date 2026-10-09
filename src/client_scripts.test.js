@@ -67,3 +67,32 @@ describe("client_scripts", () => {
     ]);
   });
 });
+
+describe("first-party scripts in folders and the language's phrases", () => {
+  it("keeps /js/progression/*.js and /phrases/<lang>.js, still skips vendor trees", () => {
+    const files = resolveGameFilesFromIndexHtml(`
+<script src="/js/phrases.js?v=1"></script>
+<script src="/phrases/en.js?v=1"></script>
+<script src="/js/jquery/jquery-3.2.0.min.js"></script>
+<script src="/js/html.js?v=1"></script>
+<script src="/js/progression/sources.js?v=1"></script>
+<script src="/js/progression/ui.js?v=1"></script>
+<script src="/js/howler/2.0.13/howler.min.js"></script>
+`);
+    assert.ok(files.includes("/phrases/en.js"));
+    assert.ok(
+      files.includes("/js/progression/sources.js") &&
+        files.includes("/js/progression/ui.js"),
+    );
+    assert.ok(
+      files.indexOf("/js/html.js") <
+        files.indexOf("/js/progression/sources.js"),
+      "in the page's order",
+    );
+    assert.ok(
+      !files.some(
+        (f) => f.startsWith("/js/jquery/") || f.startsWith("/js/howler/"),
+      ),
+    );
+  });
+});
