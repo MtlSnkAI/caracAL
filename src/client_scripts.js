@@ -49,6 +49,7 @@ function extractScriptSrcs(html) {
     const q = src.indexOf("?");
     if (q >= 0) src = src.slice(0, q);
     if (!src.startsWith("/")) src = "/" + src;
+    if (src.split("/").includes("..") || src.includes("\\")) continue; // (a path leaving the game's folders: not a file of ours)
     out.push(src);
   }
   return out;
