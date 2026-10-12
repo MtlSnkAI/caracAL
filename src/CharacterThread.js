@@ -8,6 +8,7 @@ const fetch = (...args) =>
   import("node-fetch").then(({ default: fetch }) => fetch(...args));
 const monitoring_util = require("../monitoring_util");
 const ipc_storage = require("../ipcStorage");
+const { apply_draw_guard } = require("./draw_guard");
 
 const LogUtils = require("./LogUtils");
 const { console } = LogUtils;
@@ -160,6 +161,8 @@ async function make_game(proc_args) {
   game_context.io = io;
   game_context.bowser = {};
   await ev_files(game_sources, game_context);
+  // an exception in draw() ends its frame loop: 15 s heartbeat frames until a reload (src/draw_guard.js)
+  apply_draw_guard(game_context);
   game_context.VERSION = "" + game_context.G.version;
   game_context.server_addr = proc_args.realm_addr;
   game_context.server_port = proc_args.realm_port;
