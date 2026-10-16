@@ -47,7 +47,7 @@ class FileStoredKeyValues {
     ) {
       fs.renameSync(this.#replacer_path, this.#main_path);
     }
-    this.#handle = fs.openSync(this.#main_path, "a+");
+    this.#handle = fs.openSync(this.#main_path, "a+", 0o600);
     const handle_contents = fs.readFileSync(this.#handle, "utf8").split("\n");
     for (let line of handle_contents) {
       const trimmed = line.trim();
@@ -75,14 +75,14 @@ class FileStoredKeyValues {
     for (let [key, value] of this.#backend.entries()) {
       k_v_list.push(JSON.stringify({ [key]: value }) + "\n");
     }
-    const fd = fs.openSync(this.#replacer_path, "w");
+    const fd = fs.openSync(this.#replacer_path, "w", 0o600);
     fs.writeFileSync(fd, k_v_list.join(""), { encoding: "utf8" });
     fs.fsyncSync(fd);
     fs.closeSync(fd);
     fs.closeSync(this.#handle);
     fs.unlinkSync(this.#main_path);
     fs.renameSync(this.#replacer_path, this.#main_path);
-    this.#handle = fs.openSync(this.#main_path, "a");
+    this.#handle = fs.openSync(this.#main_path, "a", 0o600);
   }
 
   close() {
