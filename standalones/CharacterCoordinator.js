@@ -57,6 +57,16 @@ function migrate_old_storage(path, localStorage) {
 }
 
 (async () => {
+  //caracAL's data for this user only: localStorage (what the CODE keeps) and the logs.
+  //a folder of 0700 also keeps others out of files made before with wider modes
+  for (const d of ["localStorage", "logs"]) {
+    try {
+      fs_regular.mkdirSync(d, { recursive: true, mode: 0o700 });
+      fs_regular.chmodSync(d, 0o700);
+    } catch (e) {
+      console.warn(`${d}: couldn't make it private (${e.code || e.message})`);
+    }
+  }
   const localStorage = new FileStoredKeyValues(
     LOCALSTORAGE_PATH,
     LOCALSTORAGE_ROTA_PATH,
