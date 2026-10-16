@@ -1,6 +1,7 @@
 const child_process = require("node:child_process");
 const account_info = require("../account_info");
 const game_files = require("../src/game_files");
+const { check_base_url } = require("../src/server_url");
 const bwi = require("bot-web-interface");
 const monitoring_util = require("../src/monitoring_util");
 const express = require("express");
@@ -78,6 +79,13 @@ function migrate_old_storage(path, localStorage) {
   // const cfg = require("../config");
   const cfg = require(CARACAL_CONFIG_PATH);
   const base_url = cfg.base_url || "https://adventure.land";
+  check_base_url(base_url, cfg.allow_local_http);
+  if (base_url.startsWith("http://")) {
+    log.warn(
+      { type: "plain_http", base_url },
+      "plain http (allow_local_http): fine for a server on this machine, never for another one",
+    );
+  }
 
   const version = await game_files.ensure_latest(base_url);
   if (cfg.cull_versions) {
