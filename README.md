@@ -39,7 +39,19 @@ npm install
 
 If login still fails, delete `config.js` and run `node main.js` again so the interactive setup re-runs.
 
+## Docs for contributors / agents
+
+- [`docs/jsdom-vm-realm-clone.md`](docs/jsdom-vm-realm-clone.md) — `"type not supported"` from AL `clone` under JSDOM+`vm`, the shipped overlay, and why a same-realm script loader is still worth exploring.
+
 ## Recent Versions
+
+#### 2026-09-30
+
+Realm-safe `clone` overlay after game/runner load (fixes `"type not supported"` under JSDOM+`vm`). See `docs/jsdom-vm-realm-clone.md`.
+
+#### 2026-08-24
+
+Unpinned characters follow live game updates via start + `welcome`/`reloaded` (no poll). Page globals are auto-extracted from the official HTML into `html_globals.js` per client version; `html_prelude.js` is only an emergency fallback. Game/runner script lists are derived from the official index and `/runner` HTML into `client_scripts.json` so new first-party scripts are downloaded without a caracAL release.
 
 #### 2026-01-23
 
@@ -172,7 +184,7 @@ Each character has five fields:
 
 - realm: Which server the character should run on
 - enabled: caracAL will only run characters who have this field set to true
-- version: Which version of the game client this character should run. A value of 0 represents the latest version
+- version: Which version of the game client this character should run. A value of 0 (or omitted) follows the live client: caracAL refetches on character start, and again when `welcome.version` disagrees with the cached tree or the server emits `reloaded`. A non-zero number or a non-numeric folder name pins that cached tree and is left alone across game updates.
 
 - script: Which JavaScript script the character should run. Scripts are located in the CODE folder. Will be ignored in a TypeScript setup.
 - typescript: Which TypeScript script the character should run. Scripts are located in the TYPECODE folder. Requires enable_TYPESCRIPT to be set to true. Take note that the file ending specified still needs to be .js and not .ts .

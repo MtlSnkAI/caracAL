@@ -4,6 +4,30 @@ Here you can review the historic development of caracAL.
 
 I do not bundle releases but with the timestamp you can usually find the relevant git commit.
 
+#### 2026-09-30
+
+Replace Adventure Land `clone` after game/runner load with a realm-safe overlay so JSDOM+`vm.createContext` no longer throws `"type not supported"` on ordinary VM objects (common during `smart_move` / map travel). Background and a possible same-realm loader follow-up: `docs/jsdom-vm-realm-clone.md`.
+
+#### 2026-09-24
+
+First-load deadline is sized from a TCP/TLS RTT probe to the realm host (`base + 12×rtt`, clamped 14s–60s) instead of a flat 14s — high-latency Asia hops get headroom without slowing EU.
+
+`welcome.version` only triggers a client refresh when the server is *ahead* of the local cache. Welcome behind local (common when HTML is newer than a realm’s announced version) no longer spams `game_client_check` mid-connect.
+
+#### 2026-09-07
+
+Derive game/runner script lists from the official index and `/runner` HTML on each `ensure_latest`, persist `client_scripts.json` per version, and refresh `html_globals.js`. First-party `/js/*.js` additions (e.g. `merrit_stand_notice.js`) are picked up automatically; browser-only vendors stay rewritten/skipped. Fallback static lists remain for old caches without a manifest.
+
+Also: download and eval `/js/merrit_stand_notice.js` — official `game.js` (v8507+) calls `show_merrit_stand_notice` on `merrit_status` without a typeof guard.
+
+#### 2026-08-30
+
+Auto-extract official page globals into `game_files/{host}/{version}/html_globals.js` when refreshing the client (no more hand-maintaining `html_prelude.js` for each upstream inject). `proximity_guides` emergency fallback remains in `html_prelude.js` if extraction fails.
+
+#### 2026-08-24
+
+Unpinned characters (`version: 0`) refetch the live game client on start and when `welcome.version` / `reloaded` show the cache is stale, then redeploy onto the new files. HTML page globals such as `last_deploy` are defined before `functions.js` so a missing inject no longer crashes the VM.
+
 #### 2026-01-23
 
 Fixed ENOENT error for nonexistent TYPECODE.out file
