@@ -47,7 +47,7 @@ class FileStoredKeyValues {
     ) {
       fs.renameSync(this.#replacer_path, this.#main_path);
     }
-    this.#handle = fs.openSync(this.#main_path, "a+");
+    this.#handle = fs.openSync(this.#main_path, "a+", 0o600);
     const handle_contents = fs.readFileSync(this.#handle, "utf8").split("\n");
     for (let line of handle_contents) {
       if (line.length > 0) {
@@ -71,11 +71,12 @@ class FileStoredKeyValues {
     }
     fs.writeFileSync(this.#replacer_path, k_v_list.join(""), {
       encoding: "utf8",
+      mode: 0o600,
     });
     fs.closeSync(this.#handle);
     fs.unlinkSync(this.#main_path);
     fs.renameSync(this.#replacer_path, this.#main_path);
-    this.#handle = fs.openSync(this.#main_path, "a");
+    this.#handle = fs.openSync(this.#main_path, "a", 0o600);
   }
 
   close() {
