@@ -36,6 +36,12 @@ const html_spoof = `<!DOCTYPE html>
 </body>
 </html>`;
 
+// the JS builtins a context has of its own (V8's; not Node's additions such as Buffer or require). Not V8's console:
+// it writes nowhere without an inspector, the page keeps the console it is given
+const INTRINSICS = Object.getOwnPropertyNames(
+  vm.runInNewContext("globalThis"),
+).filter((name) => name !== "console");
+
 function make_context(upper = null, base_url) {
   const result = new JSDOM(html_spoof, { url: base_url }).window;
   //jsdom maked globalThis point to Node global
@@ -55,9 +61,22 @@ function make_context(upper = null, base_url) {
   }
   vm.createContext(result);
 
-  result.eval = function (arg) {
-    return vm.runInContext(arg, result);
-  };
+  // jsdom's window carries Node's own builtins (Object, Function, Array, Promise, JSON, eval...): code here mixed two
+  // realms ([] instanceof Array false; new Function(...) and eval ran in Node's global, where window is undefined). The
+  // context's own in their places, as a browser's page has its own: eval(code) is a direct eval of this realm again
+  // (the game's require_code evals a slot with its module and exports in scope), parent.Function makes the page's
+  // functions. (Node's additions the page is given, such as require, stay.)
+  for (const name of INTRINSICS) {
+    if (
+      !Object.prototype.hasOwnProperty.call(result, name) ||
+      result[name] !== globalThis[name]
+    )
+      continue;
+    try {
+      delete result[name];
+      result[name] = vm.runInContext(name, result);
+    } catch (e) {}
+  }
 
   return result;
 }
