@@ -2,6 +2,13 @@
 //the session key can be used to take over your account
 //and I would know.(<3 u Nex)
 module.exports = {
+  //base url of the server cluster
+  //official servers are "https://adventure.land"
+  //make sure you trust the servers you are connecting to
+  base_url: "https://adventure.land",
+  //plain http (no TLS) is only for a server on this machine, e.g. "http://localhost:8083"
+  //and only with this set to true: your session and game traffic would go unencrypted
+  allow_local_http: false,
   //to obtain a session: show_json(parent.user_id+"-"+parent.user_auth)
   //or just delete the config file and restart caracAL
   session: "1111111111111111-abc123ABCabc123ABCabc",

@@ -1,5 +1,6 @@
 const vm = require("vm");
 const io = require("socket.io-client");
+const { socket_address } = require("./server_url");
 const fs = require("fs").promises;
 const { JSDOM } = require("jsdom");
 const node_query = require("jquery");
@@ -239,13 +240,7 @@ async function make_game(proc_args) {
       "realm address missing from servers_and_characters (expected address/addr)",
     );
   }
-  if (/^wss?:\/\//i.test(realmHost)) {
-    game_context.server_address = realmHost;
-  } else if ((proc_args.base_url || "").startsWith("http://")) {
-    game_context.server_address = "ws://" + realmHost;
-  } else {
-    game_context.server_address = "wss://" + realmHost;
-  }
+  game_context.server_address = socket_address(proc_args.base_url, realmHost);
   // Empty path must still fall back — `??` alone treats "" as intentional.
   game_context.server_path = proc_args.realm_path || "/socket.io/";
   if (proc_args.realm_port) {

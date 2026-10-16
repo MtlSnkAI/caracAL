@@ -3,6 +3,7 @@ var inquirer = require("inquirer");
 const fetch = (...args) =>
   import("node-fetch").then(({ default: fetch }) => fetch(...args));
 const account_info = require("../account_info");
+const { is_loopback } = require("./server_url");
 const fs = require("fs").promises;
 const { constants } = require("fs");
 
@@ -76,8 +77,14 @@ async function prompt_server() {
     return "https://adventure.land";
   } else {
     if (server_url.startsWith("http://")) {
+      if (!is_loopback(new URL(server_url).hostname)) {
+        console.warn(
+          "plain http is only allowed for a server on this machine (localhost). Use https:// for any other server.",
+        );
+        return prompt_server();
+      }
       console.warn(
-        "HTTP custom server: sockets use ws:// (matched to base_url). HTTPS still preferred for public hosts.",
+        "plain http: your session and game traffic go unencrypted. Fine for a server on this machine, allow_local_http is set in your config.",
       );
     }
     return server_url;
@@ -197,6 +204,7 @@ If you want max performance you should choose no.`,
 
   const conf_object = {
     base_url: base_url,
+    allow_local_http: base_url.startsWith("http://"),
     session: session,
     cull_versions: true,
     enable_TYPECODE: typescript_enabled,
@@ -279,6 +287,9 @@ module.exports = {
   //official servers are "https://adventure.land"
   //make sure you trust the servers you are connecting to
   ${ezpz("base_url", "https://adventure.land")},
+  //plain http (no TLS) is only for a server on this machine, e.g. "http://localhost:8083"
+  //and only with this set to true: your session and game traffic would go unencrypted
+  ${ezpz("allow_local_http", false)},
   //to obtain a session: show_json(parent.user_id+"-"+parent.user_auth)
   //or just delete the config file and restart caracAL
   ${ezpz("session", "1111111111111111-abc123ABCabc123ABCabc")}, 
