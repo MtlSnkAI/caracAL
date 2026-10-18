@@ -70,3 +70,57 @@ d2("locate_game_file", () => {
     );
   });
 });
+
+describe("game files: safety", () => {
+  const fs = require("node:fs"),
+    os = require("node:os"),
+    path = require("node:path"),
+    http = require("node:http");
+  const gf = require("./game_files"),
+    { resolveGameFilesFromIndexHtml } = require("./client_scripts");
+  it("a script path leaving the game's folders is refused, and left out of a page's script list", () => {
+    assert.throws(
+      () =>
+        gf.locate_game_file("https://adventure.land", "/js/../../../x.js", 7),
+      /refused/,
+    );
+    assert.throws(
+      () => gf.locate_game_file("https://adventure.land", "/js\\..\\x.js", 7),
+      /refused/,
+    );
+    const list = resolveGameFilesFromIndexHtml(
+      '<script src="/js/game.js"></script><script src="/js/../../evil.js"></script>',
+    );
+    assert.ok(
+      list.includes("/js/game.js") && !list.some((s) => s.includes("..")),
+    );
+  });
+  it("a download cut short leaves no file (none that counts as present and runs); a whole one is there", async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "gf-test-"));
+    const srv = http.createServer((req, res) => {
+      if (req.url === "/whole.js") return res.end("var whole = 1;");
+      res.writeHead(200, { "content-length": "1000" });
+      res.write("var half = ");
+      setTimeout(() => res.destroy(), 20);
+    });
+    await new Promise((ok) => srv.listen(0, "127.0.0.1", ok));
+    const base = `http://127.0.0.1:${srv.address().port}`;
+    try {
+      await assert.rejects(
+        gf.download_file(base + "/cut.js", path.join(dir, "cut.js")),
+      );
+      assert.deepEqual(
+        fs.readdirSync(dir),
+        [],
+        "neither the file nor its .tmp",
+      );
+      await gf.download_file(base + "/whole.js", path.join(dir, "whole.js"));
+      assert.equal(
+        fs.readFileSync(path.join(dir, "whole.js"), "utf8"),
+        "var whole = 1;",
+      );
+    } finally {
+      srv.close();
+    }
+  });
+});

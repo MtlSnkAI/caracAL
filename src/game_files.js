@@ -173,6 +173,7 @@ async function available_versions(base_url) {
     .reverse();
 }
 
+// written to <file>.tmp, renamed when whole: a download cut short leaves no file that counts as present (and runs)
 async function download_file(url, file_p) {
   const response = await fetch(url);
   await fs.mkdir(path.dirname(file_p), { recursive: true });
@@ -181,7 +182,14 @@ async function download_file(url, file_p) {
     throw new Error(`failed to download ${url}: ${response.statusText}`);
   }
 
-  return await streamPipeline(response.body, createWriteStream(file_p));
+  const tmp = file_p + ".tmp";
+  try {
+    await streamPipeline(response.body, createWriteStream(tmp));
+    await fs.rename(tmp, file_p);
+  } catch (e) {
+    await fs.rm(tmp, { force: true });
+    throw e;
+  }
 }
 
 async function fetch_index_html(base_url) {
@@ -245,8 +253,16 @@ function resolve_html_globals_source(base_url, version) {
   return null;
 }
 
+// (a resource path from the game's page: none outside its version's folder, e.g. /js/../../x.js)
 function locate_game_file(base_url, resource, version) {
   const base_host_name = getHostname(base_url);
+  if (
+    typeof resource !== "string" ||
+    !resource.startsWith("/") ||
+    resource.includes("\\") ||
+    resource.split("/").includes("..")
+  )
+    throw new Error(`game file path refused: ${resource}`);
   // a first-party file in a folder keeps it (/js/progression/ui.js -> progression/ui.js, /phrases/en.js ->
   // phrases/en.js): one of another folder may have its name. The rest (and the fakes) by name, as before
   const nested =
@@ -305,6 +321,7 @@ exports.ensure_latest = ensure_latest;
 exports.ensure_html_globals = ensure_html_globals;
 exports.resolve_html_globals_source = resolve_html_globals_source;
 exports.locate_game_file = locate_game_file;
+exports.download_file = download_file;
 exports.locate_html_globals = locate_html_globals;
 exports.locate_client_scripts_manifest = locate_client_scripts_manifest;
 exports.get_runner_files = get_runner_files;
