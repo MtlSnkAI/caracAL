@@ -17,6 +17,7 @@ const {
   shouldRefreshClientForWelcome,
 } = require("./realm_rtt");
 const { apply_realm_safe_clone } = require("./realm_safe_clone");
+const { apply_draw_guard } = require("./draw_guard");
 
 const LogUtils = require("./LogUtils");
 const { console } = LogUtils;
@@ -87,41 +88,6 @@ async function ev_files(locations, context) {
     let text = await fs.readFile(location, "utf8");
     vm.runInContext(text + "\n//# sourceURL=file://" + location, context);
   }
-}
-
-//When an entity's skin changes, adopt_soft_properties() reassigns element.skin
-//but skips the new_sprite(element,"full","renew") that generates textures for
-//it under no_graphics, so the next draw() -> update_sprite() -> set_texture()
-//reads textures[skin][i][j] off undefined. That throw lands before draw()
-//reschedules itself, so the loop only comes back through the 250ms watchdog -
-//and then throws again on every pass. Renew the sprite ourselves instead.
-function patch_no_graphics_skin_change(context) {
-  vm.runInContext(
-    `
-    (function () {
-      const original = adopt_soft_properties;
-      adopt_soft_properties = function (element, data) {
-        const previous = element.skin;
-        original(element, data);
-        //only the branch guarded on stype "full" can reassign skin
-        if (element.stype != "full" || element.skin == previous) return;
-        if (textures[element.skin]) return;
-        try {
-          //the same sanitizing the graphics path does before it renews
-          if (!XYWH[element.skin]) element.skin = "naked";
-          //no restore_dimensions() - no_graphics textures carry no dimensions
-          new_sprite(element, "full", "renew");
-        } catch (exception) {
-          console.warn(
-            "failed to generate textures for skin " + element.skin,
-            exception,
-          );
-        }
-      };
-    })();
-    `,
-    context,
-  );
 }
 
 async function make_runner(upper, CODE_file, proc_args, is_typescript) {
@@ -267,9 +233,10 @@ async function make_game(proc_args) {
   game_context.io = verified_io(io); // (the game asks Node's client not to verify the server's certificate)
   game_context.bowser = {};
   await ev_files(game_sources, game_context);
-  patch_no_graphics_skin_change(game_context);
   // JSDOM+vm breaks AL clone()'s instanceof checks — see docs/jsdom-vm-realm-clone.md
   apply_realm_safe_clone(game_context);
+  // an exception in draw() ends its frame loop: 15 s heartbeat frames until a reload (src/draw_guard.js)
+  apply_draw_guard(game_context);
   game_context.VERSION = "" + game_context.G.version;
   game_context.Local = "";
   game_context.Dev = "";
