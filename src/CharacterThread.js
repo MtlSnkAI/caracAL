@@ -402,11 +402,65 @@ async function make_game(proc_args) {
     // Always ask the coordinator to softkill+respawn this client.
     extensions.deploy();
   };
+
+  // The client's api_call (js/functions.js) over node-fetch: jsdom's $.ajax would send no session cookie. As there,
+  // the promise resolves with the response's data, rejects with a failed one ({ failed, reason }, or a network_error
+  // / timeout), and the response's infs go to handle_information.
+  function api_call_with_auth_cookie(method, args, r_args) {
+    r_args = r_args || {};
+    const url = `${game_context.location.origin}/api/${method}`;
+    console.debug("api_call", method);
+    const controller = r_args.timeout ? new AbortController() : null;
+    const timer =
+      controller && setTimeout(() => controller.abort(), r_args.timeout);
+    return fetch(url, {
+      method: "POST",
+      headers: {
+        Cookie: `auth=${game_context.user_id}-${game_context.user_auth}`,
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify(args ?? {}),
+      signal: controller ? controller.signal : undefined,
+    })
+      .then(
+        async (response) => {
+          let data = null;
+          try {
+            data = await response.json();
+          } catch (e) {}
+          const infs = data && data.infs;
+          if (infs) delete data.infs;
+          if (infs) game_context.handle_information(infs);
+          if (response.ok && data && !data.failed) return data;
+          if (data && data.failed) throw data;
+          throw response.ok
+            ? { failed: true, reason: "empty_response" }
+            : {
+                failed: true,
+                reason: "network_error",
+                error: response.statusText,
+                status: response.status,
+              };
+        },
+        (e) => {
+          throw {
+            failed: true,
+            reason: e && e.name === "AbortError" ? "timeout" : "network_error",
+            error: String((e && e.message) || e),
+            status: 0,
+          };
+        },
+      )
+      .finally(() => timer && clearTimeout(timer));
+  }
+
   const old_api = game_context.api_call;
   game_context.api_call = function (method, args, r_args) {
     //servers and characters are handled centrally
     if (method != "servers_and_characters") {
-      return old_api(method, args, r_args);
+      return api_call_with_auth_cookie(method, args, r_args);
+      // return old_api(method, args, r_args);
     } else {
       console.debug("filtered s&c call", method, args, r_args);
     }
@@ -582,10 +636,10 @@ async function make_game(proc_args) {
 process.on("message", async (msg) => {
   if (msg.type == "process_args") {
     const { cname, clid } = msg.arguments;
-    console.debug(
-      "starting character thread with arguments: %O",
-      msg.arguments,
-    );
+    console.debug("starting character thread with arguments: %O", {
+      ...msg.arguments,
+      sess: "<redacted>",
+    });
     const new_log = LogUtils.log.child({ cname, clid });
     LogUtils.log = new_log;
     await make_game(msg.arguments);
